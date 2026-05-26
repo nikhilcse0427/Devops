@@ -1,0 +1,19 @@
+name: first_CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "code checkout"
+        uses: actions/checkout@v4
+
+      - name: run a single script
+        run: echo "first CI started."
