@@ -1,10 +1,7 @@
 name: first_CI
 
+# Learning workflow — run manually only so pushes trigger second_CI once.
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
   workflow_dispatch:
 
 jobs:

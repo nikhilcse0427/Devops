@@ -45,3 +45,26 @@ src/
 - `GET /api/v1/health`: Check server status.
 - `GET /api/v1/users`: Fetch sample users.
 - `POST /api/v1/users`: Create a sample user.
+
+## CD on Render (GitHub Actions)
+
+On every push to `main`, `second_CI` runs tests then triggers a Render deploy via deploy hook.
+
+### One-time setup
+
+1. **Render** — Web Service → Settings:
+   - Build: `npm install` · Start: `npm start`
+   - Health check: `/api/v1/health`
+   - **Auto-Deploy: Off** (deploy only after CI passes)
+   - Copy **Deploy Hook** URL
+
+2. **GitHub** — Repo → Settings → Secrets and variables → Actions:
+   - `RENDER_DEPLOY_HOOK_URL` = deploy hook URL from Render
+
+3. **Optional** — Variables → Actions:
+   - `RENDER_SERVICE_URL` = `https://your-app.onrender.com` (shows link on the production deployment)
+
+4. **Optional Docker Hub** — only if you want image push:
+   - `DOCKERHUB_USERNAME`, `DOCKERHUB_PASSWORD`
+
+`first_CI` is manual-only (Actions → first_CI → Run workflow) so each push runs **one** workflow.
