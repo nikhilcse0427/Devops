@@ -25,7 +25,7 @@ const getUsers = async (req, res, next) => {
 const createUser = async (req, res, next) => {
   try {
     const userData = req.body;
-    const user = await userService.createUser(userData);
+    const user = await userService.createUser(userData)
     res.status(201).json({
       success: true,
       data: user,

@@ -1,18 +1,30 @@
-name: second_CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
-    branches: ["main"]
+    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-
   build-test:
+    name: Build and test
     runs-on: ubuntu-latest
-
     steps:
+      - name: Workflow started
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+
       - name: Code checkout
         uses: actions/checkout@v4
 
@@ -20,27 +32,51 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci || npm install
 
       - name: Run tests
         run: npm test --if-present
 
-  docker-build-deploy:
+  deploy:
+    name: Deploy to Render
     runs-on: ubuntu-latest
     needs: build-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          HOOK="${RENDER_DEPLOY_HOOK_URL:-$RENDER_DEPLOY_HOOK}"
+          if [ -z "$HOOK" ]; then
+            echo "::error::Add secret RENDER_DEPLOY_HOOK_URL in GitHub → Settings → Secrets → Actions"
+            exit 1
+          fi
+          echo "Triggering Render deploy..."
+          HTTP_CODE=$(curl --fail --silent --show-error -o /tmp/render-response.txt -w "%{http_code}" "$HOOK")
+          echo "Render responded with HTTP $HTTP_CODE"
+          cat /tmp/render-response.txt
+          echo "Deploy triggered. Check Render dashboard → Events for build logs."
 
+  docker-build-deploy:
+    name: Docker Hub (optional)
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
     steps:
       - name: Check Docker Hub secrets
         id: docker
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           if [ -z "$DOCKERHUB_USERNAME" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Docker Hub secrets not set — skipping image push (optional)."
+            echo "Docker Hub secrets not set — skipping (optional)."
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
@@ -53,8 +89,8 @@ jobs:
         if: steps.docker.outputs.configured == 'true'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
 
       - name: Build and push image
         if: steps.docker.outputs.configured == 'true'
@@ -62,33 +98,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/node-app:latest
-
-  deploy:
-    name: Deploy to Render
-    runs-on: ubuntu-latest
-    needs: build-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.service_url }}
-
-    steps:
-      - name: Trigger Render deploy
-        id: deploy
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-          RENDER_SERVICE_URL: ${{ vars.RENDER_SERVICE_URL }}
-        run: |
-          HOOK="${RENDER_DEPLOY_HOOK_URL:-$RENDER_DEPLOY_HOOK}"
-          if [ -z "$HOOK" ]; then
-            echo "::error::Add RENDER_DEPLOY_HOOK_URL (or RENDER_DEPLOY_HOOK) in GitHub → Settings → Secrets → Actions."
-            exit 1
-          fi
-          echo "Triggering Render deploy..."
-          curl --fail --silent --show-error "$HOOK"
-          echo "Render deploy triggered successfully."
-          if [ -n "$RENDER_SERVICE_URL" ]; then
-            echo "service_url=$RENDER_SERVICE_URL" >> "$GITHUB_OUTPUT"
-          fi
+          tags: ${{ env.DOCKERHUB_USERNAME }}/node-app:latest

@@ -48,7 +48,9 @@ src/
 
 ## CD on Render (GitHub Actions)
 
-On every push to `main`, `second_CI` runs tests then triggers a Render deploy via deploy hook.
+On every push to `main`, **CI/CD Pipeline** (`second_CI.yml`) runs tests then triggers a Render deploy via deploy hook.
+
+**Actions not running?** GitHub only runs workflows when you **push a commit** to `main` on GitHub (not from local saves alone). After adding secrets, push again or use **Actions → CI/CD Pipeline → Run workflow**.
 
 ### One-time setup
 
