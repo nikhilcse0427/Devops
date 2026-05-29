@@ -1,0 +1,6 @@
+# Tells actionlint which repository secrets this workflow uses (local lint only).
+config:
+  secrets:
+    - DOCKERHUB_USERNAME
+    - DOCKERHUB_PASSWORD
+    - RENDER_DEPLOY_HOOK
