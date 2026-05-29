@@ -66,6 +66,8 @@ jobs:
     name: Docker Hub (optional)
     runs-on: ubuntu-latest
     needs: build-test
+    # Render deploy does not use Docker Hub — do not fail the pipeline if this job fails.
+    continue-on-error: true
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -74,11 +76,12 @@ jobs:
       - name: Check Docker Hub secrets
         id: docker
         run: |
-          if [ -z "$DOCKERHUB_USERNAME" ]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Docker Hub secrets not set — skipping (optional)."
-          else
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Docker Hub secrets found — will attempt login."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Docker Hub skipped. Set DOCKERHUB_USERNAME + DOCKERHUB_PASSWORD to enable (optional)."
           fi
 
       - name: Checkout code

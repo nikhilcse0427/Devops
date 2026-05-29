@@ -66,7 +66,9 @@ On every push to `main`, **CI/CD Pipeline** (`second_CI.yml`) runs tests then tr
 3. **Optional** — Variables → Actions:
    - `RENDER_SERVICE_URL` = `https://your-app.onrender.com` (shows link on the production deployment)
 
-4. **Optional Docker Hub** — only if you want image push:
-   - `DOCKERHUB_USERNAME`, `DOCKERHUB_PASSWORD`
+4. **Optional Docker Hub** — only if you want image push (not required for Render):
+   - `DOCKERHUB_USERNAME` = your Docker Hub username
+   - `DOCKERHUB_PASSWORD` = a **Docker Hub Access Token** ([Account Settings → Security → New Access Token](https://hub.docker.com/settings/security)), **not** your account login password
+   - If you do not use Docker Hub, **delete** those secrets so the job is skipped entirely
 
 `first_CI` is manual-only (Actions → first_CI → Run workflow) so each push runs **one** workflow.
